@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="RCOG Leaflets">
+<meta name="description" content="Search RCOG patient information leaflets and display QR codes for patients to scan.">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<title>RCOG Patient Leaflets</title>
+<style>
+  :root {
+    --teal: #0A7C6E;
+    --teal-light: #E6F4F2;
+    --teal-mid: #C2E0DC;
+    --ink: #111210;
+    --ink-mid: #4A4A48;
+    --ink-faint: #8C8C8A;
+    --surface: #FAFAF8;
+    --border: #E4E4E0;
+    --white: #ffffff;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--surface);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── LAYOUT ─── */
+  .screen {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .screen.hidden { display: none; }
+
+  /* ─── SEARCH SCREEN ─── */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px 16px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--teal);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .logo-mark svg { width: 18px; height: 18px; fill: white; }
+
+  .header-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .header-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 19px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .search-box {
+    position: relative;
+  }
+
+  .search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 17px;
+    height: 17px;
+    color: var(--ink-faint);
+    pointer-events: none;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 13px 42px 13px 42px;
+    font-size: 16px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  .search-box input:focus {
+    border-color: var(--teal);
+    background: var(--white);
+  }
+
+  .search-box input::placeholder { color: var(--ink-faint); }
+
+  .clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    border: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .clear-btn svg { width: 10px; height: 10px; stroke: white; stroke-width: 2.5; }
+  .clear-btn.visible { display: flex; }
+
+  /* ─── RESULTS ─── */
+  .results-wrap {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 16px 24px;
+  }
+
+  .results-meta {
+    font-size: 12px;
+    color: var(--ink-faint);
+    padding: 10px 4px 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.1s, background 0.1s;
+    text-align: left;
+  }
+
+  .result-item:active {
+    background: var(--teal-light);
+    border-color: var(--teal-mid);
+  }
+
+  .result-text {
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .result-text mark {
+    background: var(--teal-light);
+    color: var(--teal);
+    font-weight: 500;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .result-chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--ink-faint);
+  }
+
+  .no-results p:first-child { font-size: 17px; margin-bottom: 6px; }
+  .no-results p:last-child { font-size: 14px; }
+
+  /* ─── QR SCREEN ─── */
+  #qr-screen {
+    background: var(--white);
+    justify-content: flex-start;
+  }
+
+  .qr-nav {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    color: var(--teal);
+    font-weight: 500;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .back-btn svg { width: 18px; height: 18px; }
+
+  .qr-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px 40px;
+    text-align: center;
+  }
+
+  .qr-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .qr-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 22px;
+    color: var(--ink);
+    line-height: 1.3;
+    max-width: 320px;
+    margin-bottom: 28px;
+  }
+
+  .qr-canvas-wrap {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+    display: inline-block;
+  }
+
+  #qr-output canvas,
+  #qr-output img {
+    display: block;
+    border-radius: 4px;
+  }
+
+  .qr-scan-hint {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+
+  .qr-url {
+    font-size: 11px;
+    color: var(--ink-faint);
+    word-break: break-all;
+    max-width: 280px;
+    line-height: 1.5;
+    font-family: monospace;
+    margin-top: 4px;
+  }
+
+  /* ─── FOOTER HINT ─── */
+  .install-hint {
+    padding: 14px 20px;
+    background: var(--teal-light);
+    border-top: 1px solid var(--teal-mid);
+    font-size: 12.5px;
+    color: var(--teal);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .install-hint strong { font-weight: 500; }
+
+  /* ─── TABLET / DESKTOP ─── */
+  @media (min-width: 540px) {
+    .screen { max-width: 480px; margin: 0 auto; min-height: 100svh; }
+    html { background: #EEEEE9; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SEARCH SCREEN -->
+<div class="screen" id="search-screen">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div>
+        <div class="header-label">RCOG</div>
+        <div class="header-title">Patient Leaflets</div>
+      </div>
+    </div>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input
+        type="search"
+        id="search-input"
+        placeholder="Search by condition or procedure…"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        inputmode="search"
+      />
+      <button class="clear-btn" id="clear-btn" aria-label="Clear search">
+        <svg viewBox="0 0 10 10" fill="none">
+          <path d="M1 1l8 8M9 1L1 9" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="results-wrap">
+    <div class="results-meta" id="results-meta">86 leaflets</div>
+    <div class="result-list" id="result-list"></div>
+  </div>
+
+  <div class="install-hint" id="install-hint">
+    <strong>Tip:</strong> Add to your home screen for instant access — Share → "Add to Home Screen" on iPhone
+  </div>
+</div>
+
+<!-- QR SCREEN -->
+<div class="screen hidden" id="qr-screen">
+  <div class="qr-nav">
+    <button class="back-btn" id="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Back to search
+    </button>
+  </div>
+
+  <div class="qr-body">
+    <div class="qr-eyebrow">RCOG patient information</div>
+    <div class="qr-title" id="qr-title"></div>
+    <div class="qr-canvas-wrap">
+      <div id="qr-output"></div>
+    </div>
+    <div class="qr-scan-hint">Ask your patient to scan this code</div>
+    <div class="qr-url" id="qr-url"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const PAGES = [
+  ["Abdominal hysterectomy – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/abdominal-hysterectomy-recovering-well/"],
+  ["Abortion care","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/abortion-care/"],
+  ["About RCOG guidelines and parallel information for the public","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/about-rcog-guidelines-and-parallel-information-for-the-public/"],
+  ["Air travel and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/air-travel-and-pregnancy/"],
+  ["Alcohol and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/alcohol-and-pregnancy/"],
+  ["Amniocentesis and chorionic villus sampling","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/amniocentesis-and-chorionic-villus-sampling/"],
+  ["Antenatal care for uncomplicated pregnancies","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/antenatal-care-for-uncomplicated-pregnancies/"],
+  ["Assisted vaginal birth (ventouse or forceps)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/assisted-vaginal-birth-ventouse-or-forceps/"],
+  ["Being overweight in pregnancy and after birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/being-overweight-in-pregnancy-and-after-birth/"],
+  ["Beta thalassaemia and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/beta-thalassaemia-and-pregnancy/"],
+  ["Birth after previous caesarean","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/birth-after-previous-caesarean/"],
+  ["Bleeding and/or pain in early pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/bleeding-andor-pain-in-early-pregnancy/"],
+  ["Blood transfusion, pregnancy and birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/blood-transfusion-pregnancy-and-birth/"],
+  ["Breech baby at the end of pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/breech-baby-at-the-end-of-pregnancy/"],
+  ["Care of a third- or fourth-degree tear (OASI)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/care-of-a-third-or-fourth-degree-tear-that-occurred-during-childbirth-also-known-as-obstetric-anal-sphincter-injury-oasi/"],
+  ["Cervical screening, colposcopy and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/cervical-screening-colposcopy-and-pregnancy/"],
+  ["Cervical stitch","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/cervical-stitch/"],
+  ["Chickenpox and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/chickenpox-and-pregnancy/"],
+  ["Considering a caesarean birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/considering-a-caesarean-birth/"],
+  ["Cord blood banking","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/cord-blood-banking/"],
+  ["Corticosteroids in pregnancy to reduce complications from being born prematurely","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/corticosteroids-in-pregnancy-to-reduce-complications-from-being-born-prematurely/"],
+  ["COVID-19 and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/covid-19-and-pregnancy/"],
+  ["Diagnosis and treatment of venous thrombosis in pregnancy and after birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/diagnosis-and-treatment-of-venous-thrombosis-in-pregnancy-and-after-birth/"],
+  ["Early miscarriage","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/early-miscarriage/"],
+  ["Ectopic pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/ectopic-pregnancy/"],
+  ["Endometrial ablation – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/endometrial-ablation-recovering-well/"],
+  ["Endometrial hyperplasia","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/endometrial-hyperplasia/"],
+  ["Endometriosis","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/endometriosis/"],
+  ["Epilepsy in pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/epilepsy-in-pregnancy/"],
+  ["Female genital mutilation (FGM)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/female-genital-mutilation-fgm/"],
+  ["Genital herpes and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/genital-herpes-and-pregnancy/"],
+  ["Gestational diabetes","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/gestational-diabetes/"],
+  ["Molar pregnancy and gestational trophoblastic disease","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/molar-pregnancy-and-gestational-trophoblastic-disease/"],
+  ["Group B Streptococcus (GBS) in pregnancy and newborn babies","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/group-b-streptococcus-gbs-in-pregnancy-and-newborn-babies/"],
+  ["Having a small baby","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/having-a-small-baby/"],
+  ["Healthy eating and vitamin supplements in pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/healthy-eating-and-vitamin-supplements-in-pregnancy/"],
+  ["Heavy bleeding after birth (postpartum haemorrhage)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/heavy-bleeding-after-birth-postpartum-haemorrhage/"],
+  ["HIV and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/hiv-and-pregnancy/"],
+  ["Induction of labour","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/induction-of-labour-information-for-the-public/"],
+  ["Intrahepatic cholestasis of pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/intrahepatic-cholestasis-of-pregnancy/"],
+  ["Laparoscopic hysterectomy – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/laparoscopic-hysterectomy-recovering-well/"],
+  ["Laparoscopy – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/laparoscopy-recovering-well/"],
+  ["Large loop excision of the transformation zone (LLETZ)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/large-loop-excision-of-the-transformation-zone-lletz/"],
+  ["Long-term pelvic pain","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/long-term-pelvic-pain/"],
+  ["Malaria and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/malaria-and-pregnancy/"],
+  ["Managing premenstrual syndrome (PMS)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/managing-premenstrual-syndrome-pms/"],
+  ["Menopause: diagnosis and management","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/menopause-diagnosis-and-management/"],
+  ["Mid-urethral sling for stress urinary incontinence – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/mid-urethral-sling-operation-for-stress-urinary-incontinence-recovering-well/"],
+  ["Morcellation for myomectomy or hysterectomy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/morcellation-for-myomectomy-or-hysterectomy/"],
+  ["Multiple pregnancy: having more than one baby","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/multiple-pregnancy-having-more-than-one-baby/"],
+  ["Outpatient hysteroscopy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/outpatient-hysteroscopy/"],
+  ["Ovarian cancer","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/ovarian-cancer/"],
+  ["Ovarian cysts before the menopause","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/ovarian-cysts-before-the-menopause/"],
+  ["Ovarian hyperstimulation syndrome","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/ovarian-hyperstimulation-syndrome/"],
+  ["Pelvic floor repair operation – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pelvic-floor-repair-operation-recovering-well/"],
+  ["Pelvic girdle pain and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pelvic-girdle-pain-and-pregnancy/"],
+  ["Pelvic inflammatory disease","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pelvic-inflammatory-disease/"],
+  ["Pelvic organ prolapse","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pelvic-organ-prolapse/"],
+  ["Perineal tears during childbirth – patient information poster","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/perineal-tears-during-childbirth-patient-information-poster/"],
+  ["Physical activity and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/physical-activity-and-pregnancy/"],
+  ["Placenta praevia, placenta accreta and vasa praevia","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/placenta-praevia-placenta-accreta-and-vasa-praevia/"],
+  ["Polycystic ovary syndrome (PCOS)","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/polycystic-ovary-syndrome-pcos-what-it-means-for-your-long-term-health/"],
+  ["Postmenopausal bleeding","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/postmenopausal-bleeding-poster/"],
+  ["Pre-eclampsia","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pre-eclampsia/"],
+  ["Pregnancy and breast cancer","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pregnancy-and-breast-cancer/"],
+  ["Pregnancy sickness – nausea, vomiting and hyperemesis gravidarum","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/pregnancy-sickness-nausea-and-vomiting-of-pregnancy-and-hyperemesis-gravidarum/"],
+  ["Premature labour","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/premature-labour/"],
+  ["Recovering from surgical management of a miscarriage","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/recovering-from-surgical-management-of-a-miscarriage/"],
+  ["Recurrent miscarriage","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/recurrent-miscarriage/"],
+  ["Reducing the risk of venous thrombosis in pregnancy and after birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/reducing-the-risk-of-venous-thrombosis-in-pregnancy-and-after-birth/"],
+  ["Revalidation: how do I know my doctor is up to date?","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/revalidation-how-do-i-know-my-doctor-is-up-to-date/"],
+  ["Shoulder dystocia","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/shoulder-dystocia/"],
+  ["Sickle cell disease and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/sickle-cell-disease-and-pregnancy/"],
+  ["Skin conditions of the vulva","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/skin-conditions-of-the-vulva/"],
+  ["Smoking and pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/smoking-and-pregnancy/"],
+  ["Sterilisation for women and men","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/sterilisation-for-women-and-men/"],
+  ["Surgery for stress incontinence","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/surgery-for-stress-incontinence/"],
+  ["Thyroid problems in pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/thyroid-problems-in-pregnancy/"],
+  ["Treatment for symptoms of the menopause","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/treatment-for-symptoms-of-the-menopause/"],
+  ["Umbilical cord prolapse in late pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/umbilical-cord-prolapse-in-late-pregnancy/"],
+  ["Understanding how risk is discussed in health care","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/understanding-how-risk-is-discussed-in-health-care/"],
+  ["Vaginal hysterectomy – recovering well","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/vaginal-hysterectomy-recovering-well/"],
+  ["When your baby dies before birth","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/when-your-baby-dies-before-birth/"],
+  ["When your waters break prematurely","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/when-your-waters-break-prematurely/"],
+  ["Your baby's movements in pregnancy","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/your-babys-movements-in-pregnancy/"],
+  ["Patient information for consultation","https://www.rcog.org.uk/for-the-public/browse-our-patient-information/patient-information-for-consultation/"],
+];
+
+const searchInput = document.getElementById('search-input');
+const clearBtn    = document.getElementById('clear-btn');
+const resultList  = document.getElementById('result-list');
+const resultsMeta = document.getElementById('results-meta');
+const searchScreen = document.getElementById('search-screen');
+const qrScreen    = document.getElementById('qr-screen');
+const backBtn     = document.getElementById('back-btn');
+const qrTitle     = document.getElementById('qr-title');
+const qrUrl       = document.getElementById('qr-url');
+const qrOutput    = document.getElementById('qr-output');
+const installHint = document.getElementById('install-hint');
+
+let activeQR = null;
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlight(text, q) {
+  if (!q) return escHtml(text);
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return escHtml(text);
+  return escHtml(text.slice(0, idx))
+    + '<mark>' + escHtml(text.slice(idx, idx + q.length)) + '</mark>'
+    + escHtml(text.slice(idx + q.length));
+}
+
+function render(query) {
+  const q = query.trim();
+  const matches = q
+    ? PAGES.filter(([t]) => t.toLowerCase().includes(q.toLowerCase()))
+    : PAGES;
+
+  resultsMeta.textContent = q
+    ? `${matches.length} result${matches.length !== 1 ? 's' : ''}`
+    : `${PAGES.length} leaflets`;
+
+  if (matches.length === 0) {
+    resultList.innerHTML = `
+      <div class="no-results">
+        <p>No matches for "${escHtml(q)}"</p>
+        <p>Try a shorter term or check the spelling</p>
+      </div>`;
+    return;
+  }
+
+  resultList.innerHTML = matches.map(([title, url], i) => `
+    <div class="result-item" data-index="${PAGES.indexOf(PAGES.find(p => p[0] === title && p[1] === url))}" role="button" tabindex="0">
+      <span class="result-text">${highlight(title, q)}</span>
+      <svg class="result-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </div>
+  `).join('');
+
+  resultList.querySelectorAll('.result-item').forEach((el, i) => {
+    const [title, url] = matches[i];
+    el.addEventListener('click', () => showQR(title, url));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') showQR(title, url); });
+  });
+}
+
+function showQR(title, url) {
+  qrTitle.textContent = title;
+  qrUrl.textContent   = url;
+  qrOutput.innerHTML  = '';
+
+  if (activeQR) { try { activeQR.clear(); } catch(e) {} }
+
+  const size = Math.min(window.innerWidth - 80, 280);
+  activeQR = new QRCode(qrOutput, {
+    text: url,
+    width: size,
+    height: size,
+    colorDark: '#111210',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  searchScreen.classList.add('hidden');
+  qrScreen.classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+function showSearch() {
+  qrScreen.classList.add('hidden');
+  searchScreen.classList.remove('hidden');
+  searchInput.focus();
+}
+
+searchInput.addEventListener('input', e => {
+  const v = e.target.value;
+  clearBtn.classList.toggle('visible', v.length > 0);
+  render(v);
+});
+
+clearBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  clearBtn.classList.remove('visible');
+  render('');
+  searchInput.focus();
+});
+
+backBtn.addEventListener('click', showSearch);
+
+// Hide install hint if already running as installed PWA
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  installHint.style.display = 'none';
+}
+
+render('');
+searchInput.focus();
+</script>
+</body>
+</html>

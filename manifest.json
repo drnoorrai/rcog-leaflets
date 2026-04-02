@@ -1,0 +1,18 @@
+{
+  "name": "RCOG Patient Leaflets",
+  "short_name": "RCOG Leaflets",
+  "description": "Search RCOG patient information leaflets and show QR codes to patients.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0A7C6E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://www.rcog.org.uk/Static/themes/rcog/img/logos/rcog-logomark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
