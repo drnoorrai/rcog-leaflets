@@ -1,16 +1,17 @@
 {
-  "name": "RCOG Patient Leaflets",
-  "short_name": "RCOG Leaflets",
-  "description": "Search RCOG patient information leaflets and show QR codes to patients.",
-  "start_url": "/",
+  "name": "Patient Leaflets",
+  "short_name": "Leaflets",
+  "description": "The fastest way for clinicians to access trusted Royal College patient leaflets and show QR codes to patients.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0A7C6E",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://www.rcog.org.uk/Static/themes/rcog/img/logos/rcog-logomark.svg",
-      "sizes": "any",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230A7C6E'/%3E%3Cpath fill='white' d='M164 96h132l88 88v232H164z' opacity='.95'/%3E%3Cpath fill='%230A7C6E' d='M292 100v92h88zM202 246h144v24H202zm0 56h144v24H202zm0 56h108v24H202z'/%3E%3C/svg%3E",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
